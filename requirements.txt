@@ -1,0 +1,4 @@
+keyboard
+infi.systray
+psutil
+pycaw
