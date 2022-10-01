@@ -1,90 +1,92 @@
 import subprocess
+import os
+import spotipy
+import spotipy.util as util
+import Token
+from json.decoder import JSONDecodeError
 
 # from infi import systray
 import psutil
 from time import sleep
 import keyboard
-from infi.systray import SysTrayIcon
+
+# from infi.systray import SysTrayIcon
 
 
 class Spotify:
     def __init__(self):
-        self.value = -1
+        # Set data client, redirect URL and username
+        username = "farbkecks26"
+        client_id = Token.CLIENT_ID
+        client_secret = Token.CLIENT_SECRET
+        redirect_uri = "http://localhost"
+        scope = "user-modify-playback-state"
 
-    def get_value(self):
-        from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
+        # Erase cache and prompt for user permission
+        try:
+            token = util.prompt_for_user_token(
+                username, scope, client_id, client_secret, redirect_uri
+            )
+        except (AttributeError, JSONDecodeError):
+            os.remove(f".cache-{username}")
+            token = util.prompt_for_user_token(
+                username, scope, client_id, client_secret, redirect_uri
+            )
 
-        sessions = AudioUtilities.GetAllSessions()
-        for session in sessions:
-            volume = session._ctl.QueryInterface(ISimpleAudioVolume)
-            if session.Process and session.Process.name() == "Spotify.exe":
-                value = volume.GetMasterVolume()
-                # print("orginal value: " + str(value))
-                self.value = int(float(("{:.1f}".format(value))) * 10)
-                break
+        # Configure Spotify
+        self.sp = spotipy.Spotify(auth=token)
+        self.volume = 30
+        self.is_running = False
+
+    def volume_increase(self):
+        print("volume hoch")
+        if self.volume < 100:
+            self.volume += 10
+        self.sp.volume(self.volume)
+
+    def volume_decrease(self):
+        print("volume 10 runter")
+        if self.volume > 0:
+            self.volume -= 10
+        self.sp.volume(self.volume)
+
+    def play_pause(self):
+        print("play / pause")
+        if self.is_running:
+            try:
+                self.sp.pause_playback()
+                self.is_running = False
+            except:
+                self.sp.start_playback()
+
         else:
-            # print("Spotify hat noch keine Audio abgespielt")
-            self.value = -1
+            try:
+                self.sp.start_playback()
+                self.is_running = True
+            except:
+                self.sp.pause_playback()
 
 
 class Hotkeys:
-    def __init__(self, spotify, anzeige):
+    def __init__(self, spotify):
         self.spotify = spotify
-        self.anzeige = anzeige
-
         keyboard.add_hotkey("strg+ü", self.spotify_öffnen)
         keyboard.add_hotkey("strg+ä", self.spotify_schliessen)
-        keyboard.add_hotkey("strg+i", self.show_vaule)
-        keyboard.add_hotkey("F18", self.anzeige.update)
-        keyboard.add_hotkey("F19", self.anzeige.update)
-
-    def show_vaule(self):
-        self.spotify.get_value()
-        print(self.spotify.value)
+        keyboard.add_hotkey("F23", self.spotify.volume_increase)
+        keyboard.add_hotkey("F24", self.spotify.volume_decrease)
+        keyboard.add_hotkey("F22", self.spotify.play_pause)
 
     def spotify_schliessen(self):
         print("Spotify wurde geschlossen")
         subprocess.call(r"taskkill /im Spotify.exe /t /f", shell=True)
 
     def spotify_öffnen(self):
-        if not "Toastify.exe" in (p.name() for p in psutil.process_iter()):
-            print("Spotify wurde geöffnet")
-            subprocess.call(
-                r'start /b "" "C:\Program Files\Toastify\Toastify.exe"', shell=True
-            )
-        self.anzeige.update()
-
-
-class Systray:
-    def __init__(self, spotify):
-        self.spotify = spotify
-        # self.values = [0,1,2,3,4,5,6,7,8,9,10]
-        self.icons = {
-            0: "icon/00.ico",
-            1: "icon/10.ico",
-            2: "icon/20.ico",
-            3: "icon/30.ico",
-            4: "icon/40.ico",
-            5: "icon/50.ico",
-            6: "icon/60.ico",
-            7: "icon/70.ico",
-            8: "icon/80.ico",
-            9: "icon/90.ico",
-            10: "icon/99.ico",
-        }
-        self.systray = SysTrayIcon("icon/f.ico", "spotify volume")
-        self.systray.start()
-        self.update()
-
-    def update(self):
-        sleep(0.1)
-        self.spotify.get_value()
-        # print("Value: "+ str(self.spotify.value))
-        if self.spotify.value == -1:
-            self.systray.update(icon="icon/f.ico")
-            print("Spotify hat noch keine Musik abgespielt")
-        else:
-            self.systray.update(icon=self.icons[self.spotify.value])
+        pass
+        # if not "Toastify.exe" in (p.name() for p in psutil.process_iter()):
+        #     print("Spotify wurde geöffnet")
+        #     subprocess.call(
+        #         r'start /b "" "C:\Program Files\Toastify\Toastify.exe"', shell=True
+        #     )
 
 
 if __name__ == "__main__":
@@ -92,7 +94,6 @@ if __name__ == "__main__":
     print("Hotkey wurde gestartet")
     subprocess.call(r"taskkill /im FnaticOP.exe", shell=True)
     spotify = Spotify()
-    anzeige = Systray(spotify)
-    hotkey = Hotkeys(spotify, anzeige)
-    hotkey.spotify_öffnen()
+    hotkey = Hotkeys(spotify)
+    # hotkey.spotify_öffnen()
     keyboard.wait()

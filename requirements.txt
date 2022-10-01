@@ -2,3 +2,4 @@ keyboard
 infi.systray
 psutil
 pycaw
+spotipy
