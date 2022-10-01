@@ -1,24 +1,35 @@
-import requests
-from Token import CLIENT_ID, CLIENT_SECRET
+import os
+import spotipy
+import spotipy.util as util
+import Token
+from json.decoder import JSONDecodeError
 
 
-import base64, requests, sys
+# Set data client, redirect URL and username
+username = "farbkecks26"
+client_id = Token.CLIENT_ID
+client_secret = Token.CLIENT_SECRET
+redirect_uri = Token.SPOTIPY_REDIRECT_URI
+scope = "user-modify-playback-state"
 
 
-# Encode the client ID and client secret
-authorization = base64.b64encode(
-    bytes(CLIENT_ID + ":" + CLIENT_SECRET, "ISO-8859-1")
-).decode("ascii")
+# Erase cache and prompt for user permission
+try:
+    token = util.prompt_for_user_token(
+        username, scope, client_id, client_secret, redirect_uri
+    )
+except (AttributeError, JSONDecodeError):
+    os.remove(f".cache-{username}")
+    token = util.prompt_for_user_token(
+        username, scope, client_id, client_secret, redirect_uri
+    )
 
 
-headers = {
-    "Authorization": f"Basic {authorization}",
-    "Content-Type": "application/x-www-form-urlencoded",
-}
-body = {"grant_type": "client_credentials"}
+# Configure Spotify
+sp = spotipy.Spotify(auth=token)
+current = sp.next_track()
 
-response = requests.post(
-    "https://accounts.spotify.com/api/token", data=body, headers=headers
-)
 
-print(response.json()["access_token"])
+# if __name__ == "__main__":
+#     # token_test()
+#     print(get_token())
