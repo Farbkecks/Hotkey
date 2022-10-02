@@ -4,6 +4,7 @@ import spotipy
 import spotipy.util as util
 import Token
 from json.decoder import JSONDecodeError
+from time import sleep
 
 # from infi import systray
 import psutil
@@ -15,6 +16,10 @@ import keyboard
 
 class Spotify:
     def __init__(self):
+        self.__create_contection()
+        self.is_running = False
+
+    def __create_contection(self):
         # Set data client, redirect URL and username
         username = "farbkecks26"
         client_id = Token.CLIENT_ID
@@ -35,42 +40,62 @@ class Spotify:
 
         # Configure Spotify
         self.sp = spotipy.Spotify(auth=token)
-        self.is_running = False
 
-    def volume_increase(self):
-        if self.sp.current_playback() != None:
-            print("volume hoch")
-            volume = self.sp.current_playback()["device"]["volume_percent"]  # type: ignore
-            if volume < 100:
-                volume += 10
-            self.sp.volume(volume)
+    def volume_increase(self, depth=0):
+        try:
+            if self.sp.current_playback() != None:
+                print("volume hoch")
+                volume = self.sp.current_playback()["device"]["volume_percent"]  # type: ignore
+                if volume < 100:
+                    volume += 10
+                self.sp.volume(volume)
+        except:
+            if depth == 10:
+                return
+            self.__create_contection()
+            sleep(1)
+            self.volume_increase(depth + 1)
 
-    def volume_decrease(self):
-        if self.sp.current_playback() != None:
-            print("volume runter")
-            volume = self.sp.current_playback()["device"]["volume_percent"]  # type: ignore
-            if volume > 0:
-                volume -= 10
-            self.sp.volume(volume)
+    def volume_decrease(self, depth=0):
+        try:
+            if self.sp.current_playback() != None:
+                print("volume runter")
+                volume = self.sp.current_playback()["device"]["volume_percent"]  # type: ignore
+                if volume > 0:
+                    volume -= 10
+                self.sp.volume(volume)
+        except:
+            if depth == 10:
+                return
+            self.__create_contection()
+            sleep(1)
+            self.volume_decrease(depth + 1)
 
-    def play_pause(self):
-        if self.sp.current_playback() != None:
-            print("play / pause")
-            if self.is_running:
-                try:
-                    self.sp.pause_playback()
-                    self.is_running = False
-                except:
-                    self.sp.start_playback()
+    def play_pause(self, depth=0):
+        try:
+            if self.sp.current_playback() != None:
+                print("play / pause")
+                if self.is_running:
+                    try:
+                        self.sp.pause_playback()
+                        self.is_running = False
+                    except:
+                        self.sp.start_playback()
 
+                else:
+                    try:
+                        self.sp.start_playback()
+                        self.is_running = True
+                    except:
+                        self.sp.pause_playback()
             else:
-                try:
-                    self.sp.start_playback()
-                    self.is_running = True
-                except:
-                    self.sp.pause_playback()
-        else:
-            print("kein Gerät verbunden")
+                print("kein Gerät verbunden")
+        except:
+            if depth == 10:
+                return
+            self.__create_contection()
+            sleep(1)
+            self.play_pause(depth + 1)
 
 
 class Hotkeys:
@@ -96,9 +121,9 @@ class Hotkeys:
 
 
 if __name__ == "__main__":
-    # sleep(10)
-    # print("Hotkey wurde gestartet")
-    # subprocess.call(r"taskkill /im FnaticOP.exe", shell=True)
+    sleep(10)
+    print("Hotkey wurde gestartet")
+    subprocess.call(r"taskkill /im FnaticOP.exe", shell=True)
     spotify = Spotify()
     hotkey = Hotkeys(spotify)
     hotkey.spotify_öffnen()
